@@ -22,11 +22,8 @@ has_dialog || (echo "You must have \`dialog\` installed to run this script." && 
 # Get the list of disks sorted by name (sda, sdb, sdc, etc.)
 disks=$(lsblk -dplnx size -o name,size | grep -Ev "boot|rpmb|loop" | sort -k 1)
 
-# Get the size of the disks
-disk_size=$($disks | awk '{print $2}' | sed 's/.$//')
-
 # Present the disks to the user
-dialog --title "Select disk" --menu "Select the disk to install Arch Linux on\n\nDisk size: $disk_size" 15 55 4 $disks 2> disk
+dialog --title "Select disk" --menu "Select the disk to install Arch Linux on\n\nDisk size: $disk_size" 15 55 4 $(echo $(dialog_friendly_disks)) 2> disk
 
 # Get the disk from the user
 disk=$(cat disk)
@@ -53,30 +50,34 @@ if [ "$partitioning" = "1" ]; then
   confirmed=$?
 
   # If the user confirmed the partitioning scheme
-  confirmed || exit 1
+  if [ "$confirmed" = "0" ]; then
+    # Partition the disk
+    parted -s $disk \
+      mklabel gpt \
+      mkpart ESP fat32 1MiB 513MiB \
+      set 1 boot on \
+      mkpart primary ext4 513MiB 31.5GiB \
+      mkpart primary linux-swap 31.5GiB 35.5GiB \
+      mkpart primary ext4 35.5GiB 100%
 
-  # Partition the disk
-  parted -s $disk \
-    mklabel gpt \
-    mkpart ESP fat32 1MiB 513MiB \
-    set 1 boot on \
-    mkpart primary ext4 513MiB 31.5GiB \
-    mkpart primary linux-swap 31.5GiB 35.5GiB \
-    mkpart primary ext4 35.5GiB 100%
+    # Format the partitions
+    mkfs.fat -F32 ${disk}1
+    mkfs.ext4 ${disk}2
+    mkswap ${disk}3
+    mkfs.ext4 ${disk}4
 
-  # Format the partitions
-  mkfs.fat -F32 ${disk}1
-  mkfs.ext4 ${disk}2
-  mkswap ${disk}3
-  mkfs.ext4 ${disk}4
-
-  # Mount the partitions
-  mount ${disk}2 /mnt
-  mkdir /mnt/boot
-  mount ${disk}1 /mnt/boot
-  swapon ${disk}3
-  mkdir /mnt/home
-  mount ${disk}4 /mnt/home
+    # Mount the partitions
+    mount ${disk}2 /mnt
+    mkdir /mnt/boot
+    mount ${disk}1 /mnt/boot
+    swapon ${disk}3
+    mkdir /mnt/home
+    mount ${disk}4 /mnt/home
+  else
+    # The user did not confirm the partitioning scheme
+    # Exit the script
+    exit 1
+  fi
 
 elif [ "$partitioning" = "2" ]; then
   # use cfdisk to partition the disk

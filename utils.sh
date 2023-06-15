@@ -156,3 +156,17 @@ dialog_friendly_locales() {
     index=$((index + 1))
   done
 }
+
+dialog_friendly_disks() {
+  # `dialog --menu` expects a list of options like so:
+  #   <tag> <item>
+  # where `tag` is a unique identifier, `item` is the text to display
+  
+  local disks=($(lsblk -dplnx size -o name,size | grep -Ev "boot|rpmb|loop" | sort -k 1))
+  local disks_list=()
+  local index=1
+  for disk in $disks; do
+    disks_list+=("$disk" "$index")
+    index=$((index + 1))
+  done
+}
