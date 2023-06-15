@@ -22,14 +22,11 @@ has_dialog || (echo "You must have \`dialog\` installed to run this script." && 
 # Get the list of disks sorted by name (sda, sdb, sdc, etc.)
 disks=$(lsblk -dplnx size -o name,size | grep -Ev "boot|rpmb|loop" | sort -k 1)
 
-# print the disks in a dialog-friendly format
-dialog --title "x" --msgbox $(echo $(dialog_friendly_disks)) 15 55
-
 # Present the disks to the user
 dialog --title "Select disk" --menu "Select the disk to install Arch Linux on\n\nDisk size: $disk_size" 15 55 4 $(echo $(dialog_friendly_disks)) 2> disk
 
 # Get the disk from the user
-disk=$(cat disk)
+disk=$(cat disk | sed 's/\./ /g' | awk '{print $1}')
 
 # Present a partitioning menu to the user
 dialog --title "Partitioning" --menu "Select the partitioning scheme" 15 55 4 \
