@@ -232,8 +232,9 @@ dialog --title "All Packages" --yesno "Are you sure you want to install the foll
 
 # Get the user's confirmation on the additional packages
 if [ $? -eq 0 ]; then
-  # Install the base packages
-  pacstrap -K /mnt $base_packages $kernel $additional_packages
+  # Install the base packages, kernel, and additional packages
+  # split by space so it's not parsed as a single string
+  pacstrap /mnt $(echo $base_packages) $(echo $kernel) $(echo $additional_packages)
 else
   exit 1
 fi
